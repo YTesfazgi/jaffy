@@ -1,8 +1,8 @@
 // Handles start/stop logic + global state
 
-use std::process::{Command, Child};
-use std::sync::{Arc, Mutex};
-use once_cell::sync::Lazy;
+use std::process::{Command, Child}; // Configure and spawn external processes
+use std::sync::{Arc, Mutex}; // Shared ownership of data across threads w/ mutual exclusion
+use once_cell::sync::Lazy; // Initialize a static global value once
 
 // Trait for process management to allow mocking
 pub trait ProcessManager {
@@ -51,7 +51,16 @@ impl FFmpegManager {
         #[cfg(target_os = "macos")]
         {
             // macOS specific configuration using avfoundation
-            cmd.args(["-f", "avfoundation", "-i", "1", "-r", "30", "-preset", "ultrafast", "output.mp4"]);
+            // Format: "[[video device]:[audio device]]"
+            // 1:0 typically means "screen:built-in microphone" on macOS
+            cmd.args([
+                "-f", "avfoundation", 
+                "-i", "1:0",           // Screen:Microphone 
+                "-framerate", "15",    // Lower framerate that's more widely supported
+                "-preset", "ultrafast",
+                "-pix_fmt", "yuv420p", // Ensure compatibility
+                "output.mp4"
+            ]);
         }
         
         #[cfg(target_os = "windows")]
