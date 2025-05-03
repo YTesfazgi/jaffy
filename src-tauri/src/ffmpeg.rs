@@ -111,12 +111,14 @@ impl ProcessManager for FFmpegManager {
 static FFMPEG_MANAGER: Lazy<Arc<Mutex<FFmpegManager>>> = 
     Lazy::new(|| Arc::new(Mutex::new(FFmpegManager::new())));
 
+#[allow(dead_code)]
 #[tauri::command]
 pub fn start_ffmpeg() -> Result<(), String> {
     let manager = FFMPEG_MANAGER.lock().unwrap();
     manager.spawn_process()
 }
 
+#[allow(dead_code)]
 #[tauri::command]
 pub fn stop_ffmpeg() -> Result<(), String> {
     let mut manager = FFMPEG_MANAGER.lock().unwrap();
@@ -124,6 +126,7 @@ pub fn stop_ffmpeg() -> Result<(), String> {
 }
 
 // Return the status of the FFmpeg process
+#[allow(dead_code)]
 #[tauri::command]
 pub fn ffmpeg_status() -> bool {
     let manager = FFMPEG_MANAGER.lock().unwrap();
@@ -135,10 +138,12 @@ mod tests {
     use super::*;
     
     // Mock implementation for testing
+    #[allow(dead_code)]
     struct MockProcess {
         killed: bool,
     }
     
+    #[allow(dead_code)]
     impl MockProcess {
         fn new() -> Self {
             MockProcess { killed: false }
