@@ -1,57 +1,89 @@
 <script>
   import { invoke } from "@tauri-apps/api/core";
+  import { onMount } from "svelte";
 
-  let name = $state("");
-  let greetMsg = $state("");
+  let isRecording = $state(false);
+  let recordingStatus = $state("");
+  let error = $state("");
 
-  async function greet(event) {
-    event.preventDefault();
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsg = await invoke("greet", { name });
+  onMount(async () => {
+    // Check initial recording status on component mount
+    try {
+      isRecording = await invoke("ffmpeg_status");
+      if (isRecording) {
+        recordingStatus = "Recording...";
+      }
+    } catch (e) {
+      error = `Error checking recording status: ${e}`;
+    }
+  });
+
+  async function startRecording() {
+    try {
+      error = "";
+      await invoke("start_ffmpeg");
+      isRecording = true;
+      recordingStatus = "Recording...";
+    } catch (e) {
+      error = `Failed to start recording: ${e}`;
+    }
+  }
+
+  async function stopRecording() {
+    try {
+      error = "";
+      await invoke("stop_ffmpeg");
+      isRecording = false;
+      recordingStatus = "Recording stopped";
+    } catch (e) {
+      error = `Failed to stop recording: ${e}`;
+    }
   }
 </script>
 
 <main class="container">
-  <h1>Welcome to Tauri + Svelte</h1>
+  <h1>Screen Recorder</h1>
 
-  <div class="row">
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="/vite.svg" class="logo vite" alt="Vite Logo" />
-    </a>
-    <a href="https://tauri.app" target="_blank">
-      <img src="/tauri.svg" class="logo tauri" alt="Tauri Logo" />
-    </a>
-    <a href="https://kit.svelte.dev" target="_blank">
-      <img src="/svelte.svg" class="logo svelte-kit" alt="SvelteKit Logo" />
-    </a>
+  <div class="controls">
+    <button 
+      class="record-btn" 
+      onclick={startRecording} 
+      disabled={isRecording}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+        <circle cx="12" cy="12" r="6"></circle>
+      </svg>
+      Record
+    </button>
+
+    <button 
+      class="stop-btn" 
+      onclick={stopRecording} 
+      disabled={!isRecording}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+        <rect x="7" y="7" width="10" height="10"></rect>
+      </svg>
+      Stop
+    </button>
   </div>
-  <p>Click on the Tauri, Vite, and SvelteKit logos to learn more.</p>
 
-  <form class="row" onsubmit={greet}>
-    <input id="greet-input" placeholder="Enter a name..." bind:value={name} />
-    <button type="submit">Greet</button>
-  </form>
-  <p>{greetMsg}</p>
+  {#if recordingStatus}
+    <p class="status">{recordingStatus}</p>
+  {/if}
+  
+  {#if error}
+    <p class="error">{error}</p>
+  {/if}
 </main>
 
 <style>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.svelte-kit:hover {
-  filter: drop-shadow(0 0 2em #ff3e00);
-}
-
 :root {
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
+  color: #ffffff;
+  background-color: #5B798E;
+  
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -65,92 +97,85 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
+  height: 100vh;
 }
 
 h1 {
   text-align: center;
+  color: white;
+  margin-bottom: 2rem;
 }
 
-input,
+.controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
 button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   border-radius: 8px;
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
+  padding: 0.8em 1.5em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
+  color: white;
   cursor: pointer;
+  transition: all 0.25s;
 }
 
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
+button svg {
+  width: 20px;
+  height: 20px;
 }
 
-input,
-button {
-  outline: none;
+.record-btn {
+  background-color: #e53935;
 }
 
-#greet-input {
-  margin-right: 5px;
+.record-btn:hover {
+  background-color: #c62828;
+}
+
+.stop-btn {
+  background-color: #282828;
+}
+
+.stop-btn:hover {
+  background-color: #212121;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status {
+  font-size: 1rem;
+  color: white;
+  margin-top: 1rem;
+}
+
+.error {
+  font-size: 1rem;
+  color: #ff9e9e;
+  margin-top: 1rem;
+  background-color: rgba(220, 53, 69, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  max-width: 80%;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
     color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
+    background-color: #2F4452;
   }
 }
-
 </style>
