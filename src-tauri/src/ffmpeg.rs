@@ -29,8 +29,35 @@ impl RealProcess {
 
 impl Process for RealProcess {
     fn kill(&mut self) -> Result<(), String> {
-        self.child.kill().map_err(|e| format!("Failed to stop process: {}", e))
-    }
+        // First check if the process already exited
+        if let Ok(Some(_)) = self.child.try_wait() {
+            return Ok(());
+        }
+    
+        #[cfg(unix)]
+        {
+            // Safe: `self.child.id()` returns a valid PID for a running process.
+            unsafe {
+                libc::kill(self.child.id() as i32, libc::SIGTERM);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+    
+        #[cfg(windows)]
+        {
+            // Windows doesn't support Unix signals like SIGTERM.
+            // A proper CTRL+C requires setting up a job object or using a crate like `ctrlc`.
+            // For now, wait briefly to give the process a chance to exit.
+            let _ = self.child.try_wait();
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+    
+        // Force kill if still running
+        match self.child.try_wait() {
+            Ok(Some(_)) => Ok(()), // Process exited
+            _ => self.child.kill().map_err(|e| format!("Failed to stop process: {}", e)),
+        }
+    }    
 }
 
 // Real implementation using FFmpeg
@@ -54,19 +81,31 @@ impl FFmpegManager {
             // Format: "[[video device]:[audio device]]"
             // 1:0 typically means "screen:built-in microphone" on macOS
             cmd.args([
-                "-f", "avfoundation", 
-                "-i", "1:0",           // Screen:Microphone 
-                "-framerate", "15",    // Lower framerate that's more widely supported
+                "-f", "avfoundation",
+                "-framerate", "15",
+                "-i", "4", // Screen only
+                "-pix_fmt", "yuv420p",
+                "-c:v", "libx264",
                 "-preset", "ultrafast",
-                "-pix_fmt", "yuv420p", // Ensure compatibility
+                "-an", // no audio
+                "-movflags", "+faststart",
                 "output.mp4"
-            ]);
+            ]);            
         }
         
         #[cfg(target_os = "windows")]
         {
             // Windows specific configuration using gdigrab
-            cmd.args(["-f", "gdigrab", "-framerate", "30", "-i", "desktop", "-preset", "ultrafast", "output.mp4"]);
+            cmd.args([
+                "-f", "gdigrab", 
+                "-framerate", "30", 
+                "-i", "desktop", 
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart",
+                "output.mp4"
+            ]);
         }
         
         cmd
