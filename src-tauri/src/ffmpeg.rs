@@ -3,10 +3,11 @@
 use std::process::{Command, Child}; // Configure and spawn external processes
 use std::sync::{Arc, Mutex}; // Shared ownership of data across threads w/ mutual exclusion
 use once_cell::sync::Lazy; // Initialize a static global value once
+use std::time::{SystemTime, UNIX_EPOCH}; // For timestamp-based filenames
 
 // Trait for process management to allow mocking
 pub trait ProcessManager {
-    fn spawn_process(&self) -> Result<(), String>;
+    fn spawn_process(&self, output_filename: Option<String>) -> Result<(), String>;
     fn is_process_running(&self) -> bool;
     fn kill_process(&mut self) -> Result<(), String>;
 }
@@ -51,13 +52,13 @@ impl Process for RealProcess {
             let _ = self.child.try_wait();
             std::thread::sleep(std::time::Duration::from_millis(500));
         }
-    
+
         // Force kill if still running
         match self.child.try_wait() {
             Ok(Some(_)) => Ok(()), // Process exited
             _ => self.child.kill().map_err(|e| format!("Failed to stop process: {}", e)),
         }
-    }    
+    }
 }
 
 // Real implementation using FFmpeg
@@ -72,7 +73,7 @@ impl FFmpegManager {
         }
     }
     
-    fn build_command() -> Command {
+    fn build_command(output_filename: &str) -> Command {
         let mut cmd = Command::new("ffmpeg");
         
         #[cfg(target_os = "macos")]
@@ -89,7 +90,7 @@ impl FFmpegManager {
                 "-preset", "ultrafast",
                 "-an", // no audio
                 "-movflags", "+faststart",
-                "output.mp4"
+                output_filename
             ]);            
         }
         
@@ -104,22 +105,32 @@ impl FFmpegManager {
                 "-preset", "ultrafast",
                 "-pix_fmt", "yuv420p",
                 "-movflags", "+faststart",
-                "output.mp4"
+                output_filename
             ]);
         }
         
         cmd
     }
+    
+    // Generate a timestamp-based filename if none provided
+    fn generate_filename() -> String {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        format!("recording_{}.mp4", timestamp)
+    }
 }
 
 impl ProcessManager for FFmpegManager {
-    fn spawn_process(&self) -> Result<(), String> {
+    fn spawn_process(&self, output_filename: Option<String>) -> Result<(), String> {
         // Don't spawn if process is already running
         if self.is_process_running() {
             return Ok(());
         }
         
-        let mut cmd = Self::build_command();
+        let filename = output_filename.unwrap_or_else(|| Self::generate_filename());
+        let mut cmd = Self::build_command(&filename);
         let child = cmd.spawn()
             .map_err(|e| format!("Failed to start FFmpeg: {}", e))?;
             
@@ -152,9 +163,9 @@ static FFMPEG_MANAGER: Lazy<Arc<Mutex<FFmpegManager>>> =
 
 #[allow(dead_code)]
 #[tauri::command]
-pub fn start_ffmpeg() -> Result<(), String> {
+pub fn start_ffmpeg(output_filename: Option<String>) -> Result<(), String> {
     let manager = FFMPEG_MANAGER.lock().unwrap();
-    manager.spawn_process()
+    manager.spawn_process(output_filename)
 }
 
 #[allow(dead_code)]
@@ -209,7 +220,7 @@ mod tests {
     }
     
     impl ProcessManager for MockProcessManager {
-        fn spawn_process(&self) -> Result<(), String> {
+        fn spawn_process(&self, _output_filename: Option<String>) -> Result<(), String> {
             // In a real implementation, we would set process_running here
             // but since it's immutable in this context, we just return Ok
             Ok(())
@@ -240,7 +251,7 @@ mod tests {
         assert!(manager.kill_process().is_err());
         
         // After spawning, process should be running
-        let _ = manager.spawn_process();
+        let _ = manager.spawn_process(None);
         // In a real implementation with a non-mock, this would happen automatically
         manager.process_running = true; // Manually set for mock
         assert_eq!(manager.is_process_running(), true);
