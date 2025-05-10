@@ -87,7 +87,8 @@ impl FFmpegManager {
                 "-i", "4", // Screen only
                 "-pix_fmt", "yuv420p",
                 "-c:v", "libx264",
-                "-preset", "ultrafast",
+                "-preset", "veryfast",
+                "-crf", "25",
                 "-an", // no audio
                 "-movflags", "+faststart",
                 output_filename
