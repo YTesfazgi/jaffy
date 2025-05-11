@@ -1,21 +1,46 @@
 <script>
   import { invoke } from "@tauri-apps/api/core";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
 
   let isRecording = $state(false);
   let recordingStatus = $state("");
   let error = $state("");
+  let lastKeyPress = $state(0);
 
   onMount(async () => {
-    // Check initial recording status on component mount
     try {
       isRecording = await invoke("ffmpeg_status");
       if (isRecording) {
         recordingStatus = "Recording...";
       }
     } catch (e) {
-      error = `Error checking recording status: ${e}`;
+      error = `Error: ${e}`;
     }
+  });
+
+  /** @param {KeyboardEvent} event */
+  async function handleKeyDown(event) {
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === 'r') {
+      event.preventDefault();
+      // Prevent multiple triggers within 500ms
+      const now = Date.now();
+      if (now - lastKeyPress < 500) return;
+      lastKeyPress = now;
+
+      if (isRecording) {
+        await stopRecording();
+      } else {
+        await startRecording();
+      }
+    }
+  }
+
+  onMount(() => {
+    window.addEventListener('keydown', handleKeyDown);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('keydown', handleKeyDown);
   });
 
   async function startRecording() {
@@ -32,11 +57,14 @@
   async function stopRecording() {
     try {
       error = "";
-      await invoke("stop_ffmpeg");
       isRecording = false;
+      recordingStatus = "Stopping...";
+      await invoke("stop_ffmpeg");
       recordingStatus = "Recording stopped";
     } catch (e) {
       error = `Failed to stop recording: ${e}`;
+      isRecording = true;
+      recordingStatus = "Recording...";
     }
   }
 </script>
@@ -179,3 +207,5 @@ button:disabled {
   }
 }
 </style>
+
+<svelte:window on:keydown={handleKeyDown} />

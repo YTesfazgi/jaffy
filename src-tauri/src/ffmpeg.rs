@@ -150,10 +150,12 @@ impl ProcessManager for FFmpegManager {
     fn kill_process(&mut self) -> Result<(), String> {
         let mut handle = self.process.lock().unwrap();
         if let Some(mut process) = handle.take() {
-            process.kill()?;
+            // Ignore the kill result since we're removing the process anyway
+            let _ = process.kill();
             Ok(())
         } else {
-            Err("No process running.".into())
+            // If no process was found, that's fine - it means we're already stopped
+            Ok(())
         }
     }
 }
