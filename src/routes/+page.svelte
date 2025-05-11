@@ -1,11 +1,13 @@
 <script>
   import { invoke } from "@tauri-apps/api/core";
   import { onMount, onDestroy } from "svelte";
+  import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 
   let isRecording = $state(false);
   let recordingStatus = $state("");
   let error = $state("");
   let lastKeyPress = $state(0);
+  let isInCooldown = $state(false);
 
   onMount(async () => {
     try {
@@ -13,34 +15,35 @@
       if (isRecording) {
         recordingStatus = "Recording...";
       }
+
+      // Register global shortcut for Control+Shift+R with debouncing
+      await register("Control+Shift+R", () => {
+        // Prevent multiple triggers within 500ms
+        const now = Date.now();
+        if (now - lastKeyPress < 500) return;
+        lastKeyPress = now;
+
+        // Prevent starting a new recording during cooldown
+        if (isInCooldown) return;
+
+        // Use a non-async function for the toggle to prevent hold-down behavior
+        if (isRecording) {
+          stopRecording();
+        } else {
+          startRecording();
+        }
+      });
     } catch (e) {
       error = `Error: ${e}`;
     }
   });
 
-  /** @param {KeyboardEvent} event */
-  async function handleKeyDown(event) {
-    if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === 'r') {
-      event.preventDefault();
-      // Prevent multiple triggers within 500ms
-      const now = Date.now();
-      if (now - lastKeyPress < 500) return;
-      lastKeyPress = now;
-
-      if (isRecording) {
-        await stopRecording();
-      } else {
-        await startRecording();
-      }
+  onDestroy(async () => {
+    try {
+      await unregister("Control+Shift+R");
+    } catch (e) {
+      console.error("Failed to unregister shortcut:", e);
     }
-  }
-
-  onMount(() => {
-    window.addEventListener('keydown', handleKeyDown);
-  });
-
-  onDestroy(() => {
-    window.removeEventListener('keydown', handleKeyDown);
   });
 
   async function startRecording() {
@@ -57,10 +60,15 @@
   async function stopRecording() {
     try {
       error = "";
-      isRecording = false;
-      recordingStatus = "Stopping...";
       await invoke("stop_ffmpeg");
+      isRecording = false;
       recordingStatus = "Recording stopped";
+      
+      // Enter cooldown period after stopping
+      isInCooldown = true;
+      setTimeout(() => {
+        isInCooldown = false;
+      }, 1000); // 1 second cooldown
     } catch (e) {
       error = `Failed to stop recording: ${e}`;
       isRecording = true;
@@ -207,5 +215,3 @@ button:disabled {
   }
 }
 </style>
-
-<svelte:window on:keydown={handleKeyDown} />
