@@ -2,9 +2,9 @@
 mod ffmpeg;
 
 use tauri::{
-    Manager,
     menu::{Menu, MenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Manager,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -23,32 +23,31 @@ pub fn run() {
                 .menu(&menu)
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id.as_ref() {
-									"quit" => {
-										println!("quit menu item was clicked");
-										app.exit(0);
-									}
-									_ => {
-										println!("menu item {:?} not handled", event.id);
-									}
-								})
-								.on_tray_icon_event(|tray, event| match event {
-									TrayIconEvent::Click {
-										button: MouseButton::Left,
-										button_state: MouseButtonState::Up,
-										..
-									} => {
-										println!("left click pressed and released");
-										// in this example, let's show and focus the main window when the tray is clicked
-										let app = tray.app_handle();
-										if let Some(window) = app.get_webview_window("main") {
-											let _ = window.show();
-											let _ = window.set_focus();
-										}
-									}
-									_ => {
-										println!("unhandled event {event:?}");
-									}
-								})
+                    "quit" => {
+                        println!("quit menu item was clicked");
+                        app.exit(0);
+                    }
+                    _ => {
+                        println!("menu item {:?} not handled", event.id);
+                    }
+                })
+                .on_tray_icon_event(|tray, event| match event {
+                    TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } => {
+                        println!("left click pressed and released");
+                        // in this example, let's show and focus the main window when the tray is clicked
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    _ => {
+                    }
+                })
                 .build(app)?;
             Ok(())
         })
