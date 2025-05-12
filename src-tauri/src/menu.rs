@@ -1,4 +1,4 @@
-use tauri::{menu::{Menu, MenuItem}, App, Runtime, Manager, AppHandle};
+use tauri::{menu::{Menu, MenuItem}, App, Runtime, AppHandle};
 
 /// Creates and configures the application menu with a quit option.
 /// 

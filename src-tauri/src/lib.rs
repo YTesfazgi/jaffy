@@ -5,10 +5,6 @@ mod menu;
 mod tray;
 mod window;
 
-use tauri::{
-    Manager, RunEvent
-};
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -26,29 +22,7 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(move |_app_handle, event| {
-            match event {
-                RunEvent::ExitRequested { api, code, .. } => {
-                    // Keep the event loop running even if all windows are closed
-                    // This allows us to catch tray icon events when there is no window
-                    // if we manually requested an exit (code is Some(_)) we will let it go through
-                    if code.is_none() {
-                        api.prevent_exit();
-                    }
-                }
-                RunEvent::WindowEvent {
-                    event: tauri::WindowEvent::CloseRequested { api, .. },
-                    label,
-                    ..
-                } => {
-                    println!("closing window...");
-                    // Prevent the window from closing and hide it instead
-                    api.prevent_close();
-                    if let Some(window) = _app_handle.get_webview_window(&label) {
-                        let _ = window.hide();
-                    }
-                }
-                _ => (),
-            }
+        .run(move |app_handle, event| {
+            window::handle_window_events(app_handle, &event);
         });
 }
