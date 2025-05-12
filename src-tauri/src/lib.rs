@@ -10,11 +10,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .setup(|app| {
-            // Create and setup tray icon
-            tray::setup_tray(app)?;
-            Ok(())
-        })
+        .setup(app::setup)
         .invoke_handler(tauri::generate_handler![
             ffmpeg::start_ffmpeg,
             ffmpeg::stop_ffmpeg,

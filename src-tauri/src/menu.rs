@@ -49,3 +49,18 @@ pub fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: &tauri::menu::MenuEv
         }
     }
 }
+
+/// Sets up the application menu by creating and setting it.
+/// 
+/// # Arguments
+/// 
+/// * `app` - A reference to the Tauri application instance
+/// 
+/// # Returns
+/// 
+/// * `Result<(), Box<dyn std::error::Error>>` - Returns Ok if successful, or an error if menu setup fails
+pub fn setup_menu<R: Runtime>(app: &App<R>) -> Result<(), Box<dyn std::error::Error>> {
+    let menu = create_menu(app)?;
+    app.set_menu(menu)?;
+    Ok(())
+}
