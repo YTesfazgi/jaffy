@@ -1,8 +1,8 @@
 // Handles start/stop logic + global state
 
-use std::process::{Command, Child}; // Configure and spawn external processes
-use std::sync::{Arc, Mutex}; // Shared ownership of data across threads w/ mutual exclusion
 use once_cell::sync::Lazy; // Initialize a static global value once
+use std::process::{Child, Command}; // Configure and spawn external processes
+use std::sync::{Arc, Mutex}; // Shared ownership of data across threads w/ mutual exclusion
 use std::time::{SystemTime, UNIX_EPOCH}; // For timestamp-based filenames
 
 // Trait for process management to allow mocking
@@ -34,7 +34,7 @@ impl Process for RealProcess {
         if let Ok(Some(_)) = self.child.try_wait() {
             return Ok(());
         }
-    
+
         #[cfg(unix)]
         {
             // Safe: `self.child.id()` returns a valid PID for a running process.
@@ -43,7 +43,7 @@ impl Process for RealProcess {
             }
             std::thread::sleep(std::time::Duration::from_millis(500));
         }
-    
+
         #[cfg(windows)]
         {
             // Windows doesn't support Unix signals like SIGTERM.
@@ -161,7 +161,7 @@ impl ProcessManager for FFmpegManager {
 }
 
 // Global instance for use in Tauri commands
-static FFMPEG_MANAGER: Lazy<Arc<Mutex<FFmpegManager>>> = 
+static FFMPEG_MANAGER: Lazy<Arc<Mutex<FFmpegManager>>> =
     Lazy::new(|| Arc::new(Mutex::new(FFmpegManager::new())));
 
 #[allow(dead_code)]
@@ -189,31 +189,31 @@ pub fn ffmpeg_status() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     // Mock implementation for testing
     #[allow(dead_code)]
     struct MockProcess {
         killed: bool,
     }
-    
+
     #[allow(dead_code)]
     impl MockProcess {
         fn new() -> Self {
             MockProcess { killed: false }
         }
     }
-    
+
     impl Process for MockProcess {
         fn kill(&mut self) -> Result<(), String> {
             self.killed = true;
             Ok(())
         }
     }
-    
+
     struct MockProcessManager {
         process_running: bool,
     }
-    
+
     impl MockProcessManager {
         fn new() -> Self {
             MockProcessManager {
@@ -221,18 +221,18 @@ mod tests {
             }
         }
     }
-    
+
     impl ProcessManager for MockProcessManager {
         fn spawn_process(&self, _output_filename: Option<String>) -> Result<(), String> {
             // In a real implementation, we would set process_running here
             // but since it's immutable in this context, we just return Ok
             Ok(())
         }
-        
+
         fn is_process_running(&self) -> bool {
             self.process_running
         }
-        
+
         fn kill_process(&mut self) -> Result<(), String> {
             if self.process_running {
                 self.process_running = false;
@@ -242,26 +242,26 @@ mod tests {
             }
         }
     }
-    
+
     #[test]
     fn test_mock_process_manager() {
         let mut manager = MockProcessManager::new();
-        
+
         // Initially no process is running
         assert_eq!(manager.is_process_running(), false);
-        
+
         // Trying to kill when no process should fail
         assert!(manager.kill_process().is_err());
-        
+
         // After spawning, process should be running
         let _ = manager.spawn_process(None);
         // In a real implementation with a non-mock, this would happen automatically
         manager.process_running = true; // Manually set for mock
         assert_eq!(manager.is_process_running(), true);
-        
+
         // Should be able to kill
         assert!(manager.kill_process().is_ok());
-        
+
         // After killing, no process should be running
         assert_eq!(manager.is_process_running(), false);
     }
