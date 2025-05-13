@@ -1,9 +1,10 @@
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, Manager,
+    App, Manager
 };
 
 use crate::menu;
+use crate::errors::TrayError;
 
 /// Creates and sets up the tray icon for the application
 /// 
@@ -11,8 +12,8 @@ use crate::menu;
 /// * `app` - The Tauri application handle
 /// 
 /// # Returns
-/// * `Result<(), Box<dyn std::error::Error>>` - Result indicating success or failure
-pub fn setup_tray(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
+/// * `Result<(), TrayError>` - Result indicating success or failure
+pub fn setup_tray(app: &mut App) -> Result<(), TrayError> {
     let _tray = TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu::create_menu(app)?)

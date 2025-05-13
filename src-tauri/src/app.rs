@@ -1,5 +1,5 @@
-use std::error::Error;
 use tauri::App;
+use std::error::Error;
 
 /// Initializes the application by setting up plugins, tray, and menu.
 /// 

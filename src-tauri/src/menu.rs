@@ -1,4 +1,5 @@
 use tauri::{menu::{Menu, MenuItem}, App, Runtime, AppHandle};
+use crate::errors::MenuError;
 
 /// Creates and configures the application menu with a quit option.
 /// 
@@ -8,7 +9,7 @@ use tauri::{menu::{Menu, MenuItem}, App, Runtime, AppHandle};
 /// 
 /// # Returns
 /// 
-/// * `Result<Menu<R>, Box<dyn std::error::Error>>` - Returns the configured menu if successful,
+/// * `Result<Menu<R>, MenuError>` - Returns the configured menu if successful,
 ///   or an error if menu creation fails
 /// 
 /// # Example
@@ -16,12 +17,14 @@ use tauri::{menu::{Menu, MenuItem}, App, Runtime, AppHandle};
 /// ```rust
 /// let menu = create_menu(app)?;
 /// ```
-pub fn create_menu<R: Runtime>(app: &App<R>) -> Result<Menu<R>, Box<dyn std::error::Error>> {
+pub fn create_menu<R: Runtime>(app: &App<R>) -> Result<Menu<R>, MenuError> {
     // Create menu items
-    let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)
+        .map_err(|e| MenuError::ItemCreation(e.to_string()))?;
     
     // Create menu with items
-    let menu = Menu::with_items(app, &[&quit_item])?;
+    let menu = Menu::with_items(app, &[&quit_item])
+        .map_err(|e| MenuError::Creation(e.to_string()))?;
     
     Ok(menu)
 }
@@ -58,9 +61,10 @@ pub fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: &tauri::menu::MenuEv
 /// 
 /// # Returns
 /// 
-/// * `Result<(), Box<dyn std::error::Error>>` - Returns Ok if successful, or an error if menu setup fails
-pub fn setup_menu<R: Runtime>(app: &App<R>) -> Result<(), Box<dyn std::error::Error>> {
+/// * `Result<(), MenuError>` - Returns Ok if successful, or an error if menu setup fails
+pub fn setup_menu<R: Runtime>(app: &App<R>) -> Result<(), MenuError> {
     let menu = create_menu(app)?;
-    app.set_menu(menu)?;
+    app.set_menu(menu)
+        .map_err(|e| MenuError::SetMenu(e.to_string()))?;
     Ok(())
 }

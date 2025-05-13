@@ -1,4 +1,5 @@
 use tauri::{AppHandle, Manager, RunEvent};
+use crate::errors::WindowError;
 
 /// Handles all window-related events for the application.
 ///
@@ -6,7 +7,7 @@ use tauri::{AppHandle, Manager, RunEvent};
 ///
 /// * `app_handle` - The application handle
 /// * `event` - The run event to handle
-pub fn handle_window_events(app_handle: &AppHandle, event: &RunEvent) {
+pub fn handle_window_events(app_handle: &AppHandle, event: &RunEvent) -> Result<(), WindowError> {
     match event {
         RunEvent::ExitRequested { api, code, .. } => {
             // Keep the event loop running even if all windows are closed
@@ -26,8 +27,11 @@ pub fn handle_window_events(app_handle: &AppHandle, event: &RunEvent) {
             api.prevent_close();
             if let Some(window) = app_handle.get_webview_window(label) {
                 let _ = window.hide();
+            } else {
+                return Err(WindowError::NotFound(label.to_string()));
             }
         }
         _ => (),
     }
+    Ok(())
 }

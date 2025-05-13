@@ -3,5 +3,5 @@
 mod ffmpeg;
 
 fn main() {
-    jaffy_lib::run()
+    jaffy_lib::run().expect("Failed to run application");
 }
